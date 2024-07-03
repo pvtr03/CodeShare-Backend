@@ -3,23 +3,29 @@ const Paste = require('../models/pastemodel')
 const makelink = require('./makelink')
 const bcrypt = require("bcryptjs")
 const ObjectID = require('mongodb').ObjectId;
-
+const {encrypt,decrypt} = require("./encryption");
 
 //@desc  create Paste
 //@route POST /Pastes 
 //@access public
 const createPaste = asyncHandler( async (req, res) => {
-    const { title, code, language, isPublic, password } = req.body;
+    let { title, code, language, isPublic, password } = req.body;
     if(!title || !code || !language){
         res.status(400);
         throw new Error("All fields are mandatory !");
     }
-    let link
+    let link;
+
     while(1){
         link = makelink(10)
         const paste = await Paste.find({ link: link }).setOptions({ sanitizeFilter: true });
         if(paste.length == 0) 
             break;
+    }
+    if(!isPublic)
+    {
+        // private paste, need to encrypt
+        code = encrypt(code,password);
     }
     const paste = await Paste.create({
         link: link, 
@@ -67,7 +73,14 @@ const getPaste = asyncHandler( async (req, res) => {
                 res.status(403).json('Unauthorized')
             }
             else{
-                res.status(200).json(paste)
+        console.log(password);
+
+                const decryptedCode = decrypt(paste[0].code, password);
+                // Convert Mongoose document to plain JavaScript object
+                const pasteObject = paste[0].toObject();
+                pasteObject.code = decryptedCode;
+                console.log(paste[0])
+                res.status(200).json([pasteObject]);
             }
         })
     }

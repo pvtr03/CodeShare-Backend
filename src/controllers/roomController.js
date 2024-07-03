@@ -1,5 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const Room = require('../models/roommodel')
+const activeRoom = require('../models/activeRoomModel');
 const makelink = require('./makelink')
 const bcrypt = require("bcryptjs")
 const ObjectID = require('mongodb').ObjectId
@@ -38,7 +39,6 @@ const getRoom = asyncHandler( async (req, res) => {
         throw new Error("Room not Found");
     }
     const hashedpass = room[0]["password"]
-    console.log(room);
     if(!hashedpass){
         res.status(200).json(room)
     }
@@ -108,5 +108,71 @@ const updateRoom = asyncHandler( async (req, res) => {
     }
 });
 
+const addParticipant = async (roomID,socketID,userName)=>{
+    // first of all check if this room exists or not
+    const room = await Room.findById(roomID);
+    if(!room)
+    {
+        // no such room exists
+        return [];
+    }
+    const activeRoomData = await activeRoom.findOne({roomID:roomID}).setOptions({sanitizeFilter:true});
+    if(!activeRoomData)
+    {
+        // first user / admin of the room
+        // create a new activeRoom of this roomID;
+        const newActiveRoom = await activeRoom.create({
+            roomID:roomID,
+            participantList:[{
+                socketID:socketID,
+                username:userName
+            }],
+            roomAdmin:socketID
+        })
 
-module.exports = {createRoom, getRoom, updateRoom }
+        return newActiveRoom.participantList;
+
+    }
+    else
+    {
+        // room already exists, just add this to participant list;
+        activeRoomData.participantList.push({
+            socketID: socketID,
+            username: userName
+        });
+
+        await activeRoomData.save();
+
+        return activeRoomData.participantList;
+    }
+}
+const removeParticipant = async (roomID, socketID) => {
+    // first, check if the room exists or not
+    const room = await Room.findById(roomID);
+    if (!room) {
+        // No such room exists
+        return [];
+    }
+
+    const activeRoomData = await activeRoom.findOne({ roomID: roomID }).setOptions({ sanitizeFilter: true });
+
+    if (!activeRoomData) {
+        // no active room found
+        return [];
+    } else {
+        // room exists, remove the user from the participant list
+        activeRoomData.participantList = activeRoomData.participantList.filter(
+            participant => participant.socketID !== socketID
+        );
+
+        // if the participant list is empty, we delete the active room
+        if (activeRoomData.participantList.length === 0) {
+            await activeRoom.deleteOne({ _id: activeRoomData._id });
+        } else {
+            await activeRoomData.save();
+        }
+
+        return activeRoomData.participantList;
+    }
+};
+module.exports = {createRoom, getRoom, updateRoom, addParticipant, removeParticipant }
