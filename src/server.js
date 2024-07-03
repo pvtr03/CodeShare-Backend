@@ -27,6 +27,12 @@ io.on('connection',(socket)=>{
     socket.on('code-change',(roomID,newCode)=>{
         socket.broadcast.to(roomID).emit('code-update',newCode);
     })
+    socket.on('lock-acquired',(roomID)=>{
+        socket.broadcast.to(roomID).emit('lock-acquired');
+    })
+    socket.on('lock-freed',(roomID)=>{
+        socket.broadcast.to(roomID).emit('lock-freed');
+    })
 
     socket.on('disconnecting', async () => {
         // Iterate over all the rooms the socket is part of and remove the participant
