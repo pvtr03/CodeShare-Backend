@@ -6,8 +6,11 @@ const env = require('dotenv').config()
 const connectDb = require('./config/dbconnection')
 const errorHandler = require("./middleware/errorhandler");
 const http = require('http');
+const dotenv = require('dotenv');
 const {addParticipant, removeParticipant} = require('./controllers/roomController');
+
 let server = http.createServer(app);
+dotenv.config();
 let io = new Server(server,{
     cors:{
         origin:"*"
