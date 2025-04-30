@@ -58,6 +58,10 @@ app.use(express.json())
 
 app.use('/', require('./routes/pasteroutes'))
 app.use('/rooms', require('./routes/roomroutes'))
+app.use('/compiler',require('./routes/compilerRoutes'))
+app.get('/housekeeping/ping', async (req,res)=>{
+    res.status(200).send("Hello there");
+})
 
 server.listen(port, () => {
     console.log(`Server running on port ${port}`)
